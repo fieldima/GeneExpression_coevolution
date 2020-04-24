@@ -150,8 +150,8 @@ tree <- cleaned$phy
 exp.df <- t(cleaned$data)
 interactions <- read.table(interaction.file,sep="\t",header=T,stringsAsFactors = F)
 sem.df<- read.table(std.exp,sep="\t",header=T,stringsAsFactors = F,row.names=1)
-nb_cores <- 40
-results.list <- mclapply(1:nrow(interactions),function(i){parallelAnalysis(prot.1=interactions[i,1],prot.2=interactions[i,2],exp.df=exp.df,sem.df=sem.df,link=interactions[i,3],score=interactions[i,4],tree=tree)},mc.cores = getOption("mc.cores", nb_cores))
+nb_cores <- 30
+results.list <- mclapply(1:nrow(interactions),function(i){phylogeneticAnalysis(prot.1=interactions[i,1],prot.2=interactions[i,2],exp.df=exp.df,sem.df=sem.df,link=interactions[i,3],score=interactions[i,4],tree=tree)},mc.cores = getOption("mc.cores", nb_cores))
 results.list <- results.list[!is.na(results.list)]
 results <- do.call("rbind",results.list)
 write.table(results,out,sep="\t",quote=F,row.names = F)

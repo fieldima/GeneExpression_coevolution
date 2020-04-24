@@ -1,4 +1,5 @@
 library(ggplot2)
+library(cowplot)
 library(geiger)
 library(mvMORPH)
 library(phytools)
@@ -7,6 +8,7 @@ library(OneR)
 library(viridis)
 library(boot)
 library(nlme)
+
 
 
 CleanData <- function(phy, data) {
@@ -49,19 +51,19 @@ getUniqueMembers <- function(model.results,size.cutoff)
 
 getPerformanceMetric <- function(df,method="phylo",metric="pvalue")
 {
-  df <- removeBadFits(df)
-  df <- removeResultsWMissingData(df)
-  df2 <- df[which(df$Linked == "binding" | df$Linked == "None"),]
-  df2[,"LRT.pval.BH"] <- p.adjust(df2$LRT.pval,"BH")
-  df2[,"Pearson.pval.BH"] <- p.adjust(df2$Corr.significant,"BH")
-  df.test <- df2[which(df2$Linked == "binding"),]
-  df.null <- df2[which(df2$Linked == "None"),]
+  df.test <- df[which(df$Linked == "binding"),]
+  df.null <- df[which(df$Linked == "None"),]
   if (nrow(df.null) > nrow(df.test))
   {
     df.null <- df.null[sample(1:nrow(df.null),size = nrow(df.test)),]
   } else{
     df.test <- df.test[sample(1:nrow(df.test),size = nrow(df.null)),]
   }
+  df2 <- rbind(df.test,df.null)
+  df2[,"LRT.pval.BH"] <- p.adjust(df2$LRT.pval,method="BH")
+  df2[,"Pearson.pval.BH"] <- p.adjust(df2$Corr.significant,method="BH")
+  df.test <- df2[which(df2$Linked == "binding"),]
+  df.null <- df2[which(df2$Linked == "None"),]
   if (method == "phylo")
   {
     if (metric == "pvalue")
@@ -74,7 +76,7 @@ getPerformanceMetric <- function(df,method="phylo",metric="pvalue")
       tnr <- tn/(tn+fp)
       fdr <- fp/(fp+tp)
       acc <- (tp+tn)/(tp+tn+fp+fn)
-      perf <- list("True Positive Rate"=tpr,"True Negative Rate"=tnr,"False Discovery Rate"=fdr,"Accuracy"=acc)
+      perf <- list(TPR=tpr,FPR=1-tnr,FDR=fdr,Accuracy=acc)
       return(perf)
     }
   }else if (method == "pearson")
@@ -89,7 +91,7 @@ getPerformanceMetric <- function(df,method="phylo",metric="pvalue")
       tnr <- tn/(tn+fp)
       fdr <- fp/(fp+tp)
       acc <- (tp+tn)/(tp+tn+fp+fn)
-      perf <- list("True Positive Rate"=tpr,"True Negative Rate"=tnr,"False Discovery Rate"=fdr,"Accuracy"=acc)
+      perf <- list(TPR=tpr,FPR=1-tnr,FDR=fdr,Accuracy=acc)
       return(perf)
     }
   }
@@ -110,18 +112,15 @@ checkPIC <- function(df,expr,tree)
     missing.species.1 <- names(x)[is.na(x)]
     missing.species.2 <- names(y)[is.na(y)]
     missing <- union(missing.species.1,missing.species.2)
-    if (length(missing) != 0)
-    {
-      tmp <- drop.tip(tree,missing)
-    } else{
-      tmp <- tree
-    }
+    if (length(missing) != 0) next
+    tmp <- tree
     x <- x[tmp$tip.label]
     y <- y[tmp$tip.label]
     #print(missing)
     # print(x)
     # print(tmp$tip.label)
     #print(tmp$tip.label)
+
     x.pic <- pic(x,tmp,var.contrasts = T)
     y.pic <- pic(y,tmp,var.contrasts = T)
     check.x <- cor.test(abs(x.pic[,"contrasts"]),sqrt(x.pic[,"variance"]))$p.value
@@ -175,12 +174,7 @@ removeBadFits <- function(model.results)
 
 removeResultsWMissingData<-function(model.results,cutoff=0)
 {
-  if ("Num.missing.1" %in% colnames(model.results))
-  {
-    model.results <- model.results[which(model.results[,"Num.missing.1"] <= cutoff & model.results[,"Num.missing.2"] <= cutoff),]
-  } else{
-    model.results <- model.results[which(model.results[,"Num.obs.1"] <= cutoff & model.results[,"Num.obs.2"] <= cutoff),]
-  } 
+  model.results <- model.results[which(model.results[,"Num.missing.1"] <= cutoff & model.results[,"Num.missing.2"] <= cutoff),] 
   return(model.results)
 }
 
@@ -224,7 +218,7 @@ plotBack2Back <- function(model.results,main)
                  axis.title.x = element_text(size=14,face="bold"),
                  axis.text = element_text(size=12,face="bold"),
                  legend.title=element_blank(),
-                 legend.position = c(0.15,0.1)))
+                 legend.position = c(0.2,0.1)))
   
   ymax <- ggplot_build(evol)$layout$panel_scales_x[[1]]$range$range[2]
   xmin <- ggplot_build(evol)$layout$panel_scales_y[[1]]$range$range[1]
@@ -245,7 +239,7 @@ plotBack2Back <- function(model.results,main)
   mean.cat.1 <- as.character(round(mean(model.results[which(model.results$Linked == "binding"),"Evol.cor"]),2))
   mean.cat.2 <- as.character(round(mean(model.results[which(model.results$Linked == "None"),"Evol.cor"]),2))
   
-  text.pos.x <- xmin * 0.9
+  text.pos.x <- xmin * 0.95
   text.pos.y <- ymin*0.4
   
   
@@ -274,19 +268,26 @@ getResults<-function(path,model="BM",tree.file="../Data/fungi_tree.tre",expr.fil
 {
   if (length(suffix) == 2)
   {
+
     test.case <- list.files(path=path,pattern=suffix[1],full.names = T)
     null.case <- list.files(path=path,pattern=suffix[2],full.names = T)
+    print(test.case)
+    print(null.case)
     df.1<- read.table(test.case,sep="\t",header=T,stringsAsFactors = F)
     df.2<- read.table(null.case,sep="\t",header=T,stringsAsFactors = F)
     df <- rbind(df.1,df.2)
   } else{
-    
     test.case <- list.files(path=path,pattern=suffix[1],full.names = T) 
     df <-  read.table(test.case,sep="\t",header=T,stringsAsFactors = F)
   }
+  print(length(which(df$Linked=="binding")))
   df <- removeBadFits(df)
+  print(length(which(df$Linked=="binding")))
   x<-which(duplicated(df[,c("Prot.1","Prot.2")],fromLast = T))
-  df <- df[-x,]
+  if (length(x) > 0)
+  {
+    df <- df[-x,]
+  }
   if (!is.null(filter.score))
   {  
     df <- pullConfidentInteraction(df,filter.score)
@@ -295,6 +296,7 @@ getResults<-function(path,model="BM",tree.file="../Data/fungi_tree.tre",expr.fil
   {
     df <- removeResultsWMissingData(df,filter.missing)
   }
+  print(length(which(df$Linked=="binding")))
   tree <- read.tree(tree.file)
   tree <- drop.tip(tree,c("S.pombe"))
   expr <- read.table(expr.file,sep="\t",header=T,stringsAsFactors=F,row.names=1)
@@ -303,6 +305,7 @@ getResults<-function(path,model="BM",tree.file="../Data/fungi_tree.tre",expr.fil
   {
     df <- checkModelViolations(df,expr,tree)
   }
+  print(length(which(df$Linked=="binding")))
   if(remove.bad.go == T)
   {
     go.terms <- read.table("../Data/go_annotation_prot_ids.txt",sep="\t",header=T)
@@ -457,21 +460,21 @@ plotMetricWithEvolCor<-function(model.results,metric="Mean.Anc.State",apply.arct
         + xlim(c(xmin-0.1,xmax+0.1))
         + ylim(c(ymin-0.1,ymax+0.1))
         + ggtitle(main)
-        + theme(plot.title = element_text(hjust = 0.5,size=12,face="bold"),
+        + theme(plot.title = element_text(hjust = 0.5,size=10,face="bold"),
                 panel.grid.major = element_blank(), 
                 panel.grid.minor = element_blank(),
                 panel.background = element_blank(),
                 axis.line = element_line(colour = "black"),
-                axis.title.y=element_text(size=14,face="bold"),
-                axis.title.x = element_text(size=14,face="bold"),
-                axis.text = element_text(size=12,face="bold")))
+                axis.title.y=element_text(size=10,face="bold"),
+                axis.title.x = element_text(size=10,face="bold"),
+                axis.text = element_text(size=10,face="bold")))
   xmin <- ggplot_build(p)$layout$panel_scales_x[[1]]$range$range[1]-0.15
   xmax <- ggplot_build(p)$layout$panel_scales_x[[1]]$range$range[2]+0.15
   ymin <- ggplot_build(p)$layout$panel_scales_y[[1]]$range$range[1]-0.15
   ymax <- ggplot_build(p)$layout$panel_scales_y[[1]]$range$range[2]+0.15
   height <- ymax - ymin
   width <- xmax - xmin
-  text.pos.y <- ymax - (height * 0.05)
+  text.pos.y <- ymax - (height * 0.04)
   text.pos.x <- xmin + (width * 0.1)
   p <- p + annotate("text",x=text.pos.x,y=text.pos.y,label=sprintf("bold(rho[S]) == %0.2f", (round(x,3))),parse=T,size=5,fontface=2)
   p.value <- calculate.Pval.wcorr(model.results,metric,"Evol.cor",R=num.boot)
@@ -632,13 +635,13 @@ geneExpressionToCoevolutionDistanceMetric<-function(model.results,main,xlabel,yl
         + xlim(c(xmin-0.1,xmax+0.1))
         + ylim(c(ymin-0.1,ymax+0.1))
         + ggtitle(main)
-        + theme(plot.title = element_text(hjust = 0.5,size=12,face="bold"),
+        + theme(plot.title = element_text(hjust = 0.5,size=10,face="bold"),
                 panel.grid.major = element_blank(), 
                 panel.grid.minor = element_blank(),
                 panel.background = element_blank(),
                 axis.line = element_line(colour = "black"),
-                axis.title.y=element_text(size=14,face="bold"),
-                axis.title.x = element_text(size=14,face="bold"),
+                axis.title.y=element_text(size=12,face="bold"),
+                axis.title.x = element_text(size=12,face="bold"),
                 axis.text = element_text(size=12,face="bold")))
   xmin <- ggplot_build(p)$layout$panel_scales_x[[1]]$range$range[1]-0.15
   xmax <- ggplot_build(p)$layout$panel_scales_x[[1]]$range$range[2]+0.15
@@ -654,6 +657,242 @@ geneExpressionToCoevolutionDistanceMetric<-function(model.results,main,xlabel,yl
   return(p)
 }
 
+fraser2004Approach <- function(sim)
+{
+  sim.treat <- sim[which(sim$Linked == "binding"),]
+  #sim.treat <- sim.treat[-which((sim.treat$Pearson < 0 & sim.treat$Corr.significant < 0.05) | (sim.treat$Evol.cor < 0 & sim.treat$LRT.pval < 0.05)),]
+  sim.null <- sim[which(sim$Linked == "None"),]
+  sim.null <- sim.null[sample(1:nrow(sim.null),size=nrow(sim.treat),replace=F),]
+  train.test.divide <- sample(1:nrow(sim.treat),size=0.8*nrow(sim.treat),replace = F)
+  sim.treat.train <- sim.treat[train.test.divide,]
+  sim.treat.test <- sim.treat[-train.test.divide,]
+  
+  train.test.divide <- sample(1:nrow(sim.null),size=0.8*nrow(sim.null),replace = F)
+  sim.null.train <- sim.null[train.test.divide,]
+  sim.null.test <- sim.null[-train.test.divide,]
+  
+  breaks <- seq(-1,1,0.1)
+  grouped.null <- cut(x = sim.null.train$Evol.cor,breaks=breaks)
+  grouped.treat <- cut(x=sim.treat.train$Evol.cor,breaks=breaks)
+
+  evol.breaks <- summary(grouped.null)/nrow(sim.null.train)<summary(grouped.treat)/nrow(sim.treat.train)
+  evol.cutoff <- NA
+  for (i in 1:length(evol.breaks))
+  {
+    if (evol.breaks[i] == T && is.na(evol.cutoff))
+    {
+      evol.cutoff <- breaks[i] + 0.1
+    } else if (evol.breaks[i] == F && !is.na(evol.cutoff)){
+      evol.cutoff <- NA
+    }
+  }
+  evol.power <- length(which(sim.treat.test$Evol.cor > evol.cutoff))/nrow(sim.treat.test)
+  evol.fpr <- length(which(sim.null.test$Evol.cor > evol.cutoff))/nrow(sim.null.test)
+  evol.fdr <- length(which(sim.null.test$Evol.cor > evol.cutoff))/(length(which(sim.treat.test$Evol.cor > evol.cutoff))+length(which(sim.null.test$Evol.cor > evol.cutoff)))
+  evol.accuracy <- (evol.power*nrow(sim.treat.test) + (1-evol.fpr) * nrow(sim.null.test))/(nrow(sim.treat.test) + nrow(sim.null.test))
+  
+  grouped.null <- cut(x = sim.null.train$Pearson,breaks=breaks)
+  grouped.treat <- cut(x=sim.treat.train$Pearson,breaks=breaks)
+  pearson.breaks <- summary(grouped.null)/nrow(sim.null.train)<summary(grouped.treat)/nrow(sim.treat.train)
+  pearson.cutoff <- NA
+  for (i in 1:length(pearson.breaks))
+  {
+    if (pearson.breaks[i] == T && is.na(pearson.cutoff))
+    {
+      pearson.cutoff <- breaks[i] + 0.1
+    } else if (pearson.breaks[i] == F && !is.na(pearson.cutoff)){
+      pearson.cutoff <- NA
+    }
+  }
+  pearson.power <- length(which(sim.treat.test$Pearson > pearson.cutoff))/nrow(sim.treat.test)
+  pearson.fpr <- length(which(sim.null.test$Pearson > pearson.cutoff))/nrow(sim.null.test)
+  pearson.fdr <- length(which(sim.null.test$Pearson > pearson.cutoff))/(length(which(sim.treat.test$Pearson > pearson.cutoff))+length(which(sim.null.test$Pearson > pearson.cutoff)))
+ 
+  pearson.accuracy <- (pearson.power*nrow(sim.treat.test) + (1-pearson.fpr) * nrow(sim.null.test))/(nrow(sim.treat.test) + nrow(sim.null.test))
+  return(list(Phylogenetic.cutoff=evol.cutoff,
+    Pearson.cutoff=pearson.cutoff,
+    Phylogenetic.power=evol.power,
+    Pearson.power=pearson.power,
+    Phylogenetic.fpr=evol.fpr,
+    Pearson.fpr=pearson.fpr,
+    Phylogenetic.fdr = evol.fdr,
+    Pearson.fdr=pearson.fdr,
+    Phylogenetic.accuracy=evol.accuracy,
+    Pearson.accuracy=pearson.accuracy))
+}
+
+pValueCutoff <- function(x,treat.p.val,null.p.val)
+{
+  length(which(null.p.val < x))/(length(which(treat.p.val < x))+length(which(null.p.val < x))) - 0.05
+}
+
+
+martin2018Approach <- function(sim,correlation="Pearson")
+{
+  sim.treat <- sim[which(sim$Linked == "binding"),]
+  sim.null <- sim[which(sim$Linked == "None"),]
+  sim.null <- sim.null[sample(1:nrow(sim.null),size=nrow(sim.treat),replace=F),]
+  null.p.val <- numeric(length=nrow(sim.null))
+  treat.p.val <- numeric(length=nrow(sim.treat))
+  for (i in 1:nrow(sim.null))
+  {
+    null.subset <- sim.null[sample(c(1:i-1,i+1:nrow(sim.null)),size=1000,replace=F),]
+    null.subset.cor <- null.subset[,correlation]
+    total.higher <- which(null.subset.cor > sim.null[i,correlation])
+    p.value <- (1 + length(total.higher))/1001
+    null.p.val[i] <- p.value
+  }
+  for (i in 1:nrow(sim.treat))
+  {
+    null.subset <- sim.null[sample(1:nrow(sim.null),size=1000,replace=F),]
+    null.subset.cor <- null.subset[,correlation]
+    total.higher <- which(null.subset.cor > sim.treat[i,correlation])
+    p.value <- (1 + length(total.higher))/1001
+    treat.p.val[i] <- p.value
+  }
+  fdr.cutoff <- uniroot(pValueCutoff,interval=c(0,1),treat.p.val=treat.p.val,null.p.val=null.p.val,f.lower=-0.05)
+  tpr <- length(which(treat.p.val < fdr.cutoff$root))/length(treat.p.val)
+  fpr <- length(which(null.p.val < fdr.cutoff$root))/length(null.p.val)
+  fdr <- length(which(null.p.val < fdr.cutoff$root))/(length(which(treat.p.val < fdr.cutoff$root))+length(which(null.p.val < fdr.cutoff$root)))
+  accuracy <- (tpr*nrow(sim.treat) + (1-fpr) * nrow(sim.null))/(nrow(sim.treat) + nrow(sim.null))
+  return(list(TPR=tpr,
+              FPR=fpr,
+              FDR=fdr,
+              Accuracy=accuracy))
+}
+
+
+printSDValues <- function(tpr,fpr,fdr,accuracy)
+{
+  print(paste("TPR S.D",sd(tpr)))
+  print(paste("FPR S.D",sd(fpr)))
+  print(paste("FDR S.D",sd(fdr)))
+  print(paste("Accuracy S.D",sd(accuracy)))
+}
+
+evaluateFraser2004 <- function(sim)
+{
+  evol.power <- numeric(length=100)
+  pearson.power <- numeric(length=100)
+  evol.fpr <- numeric(length=100)
+  pearson.fpr <- numeric(length=100)
+  evol.fdr <- numeric(length=100)
+  pearson.fdr <- numeric(length=100)
+  evol.accuracy <- numeric(length=100)
+  pearson.accuracy <- numeric(length=100)
+  for (i in 1:100)
+  {
+    power <- fraser2004Approach(sim)
+    evol.power[i] <- power$Phylogenetic.power
+    pearson.power[i] <- power$Pearson.power
+    evol.fpr[i] <- power$Phylogenetic.fpr
+    pearson.fpr[i] <- power$Pearson.fpr
+    evol.fdr[i] <- power$Phylogenetic.fdr
+    pearson.fdr[i] <- power$Pearson.fdr
+    evol.accuracy[i] <- power$Phylogenetic.accuracy
+    pearson.accuracy[i] <- power$Pearson.accuracy
+
+  }
+  print("Evolutionary Correlation SD")
+  printSDValues(evol.power,evol.fpr,evol.fdr,evol.accuracy)
+  print("Pearson Correlation SD")
+  printSDValues(pearson.power,pearson.fpr,pearson.fdr,pearson.accuracy)
+  comp.power <- t.test(evol.power,pearson.power)
+  comp.fpr <- t.test(evol.fpr,pearson.fpr)
+  comp.fdr <- t.test(evol.fdr,pearson.fdr)
+  comp.accuracy <- t.test(evol.accuracy,pearson.accuracy)
+  print(comp.power)
+  print(comp.fpr)
+  print(comp.fdr)
+  print(comp.accuracy)
+}
+
+
+evaluateMartin2018 <- function(sim)
+{
+  evol.power <- numeric(length=100)
+  pearson.power <- numeric(length=100)
+  evol.fpr <- numeric(length=100)
+  pearson.fpr <- numeric(length=100)
+  evol.fdr <- numeric(length=100)
+  pearson.fdr <- numeric(length=100)
+  evol.accuracy <- numeric(length=100)
+  pearson.accuracy <- numeric(length=100)
+  for (i in 1:100)
+  {
+    #print(i)
+    power <- martin2018Approach(sim,"Evol.cor")
+    evol.power[i] <- power$TPR
+    evol.fpr[i] <- power$FPR
+    evol.fdr[i] <- power$FDR
+    evol.accuracy[i] <- power$Accuracy
+  }
+  for (i in 1:100)
+  {
+    #print(i)
+    power <- martin2018Approach(sim,"Pearson")
+    pearson.power[i] <- power$TPR
+    pearson.fpr[i] <- power$FPR
+    pearson.fdr[i] <- power$FDR
+    pearson.accuracy[i] <- power$Accuracy
+
+  }
+  print("Evolutionary Correlation SD")
+  printSDValues(evol.power,evol.fpr,evol.fdr,evol.accuracy)
+  print("Pearson Correlation SD")
+  printSDValues(pearson.power,pearson.fpr,pearson.fdr,pearson.accuracy)
+  comp.power <- t.test(evol.power,pearson.power)
+  comp.fpr <- t.test(evol.fpr,pearson.fpr)
+  comp.fdr <- t.test(evol.fdr,pearson.fdr)
+  comp.accuracy <- t.test(evol.accuracy,pearson.accuracy)
+  print(comp.power)
+  print(comp.fpr)
+  print(comp.fdr)
+  print(comp.accuracy)
+}
+
+
+evaluatePCM<- function(sim)
+{
+  evol.power <- numeric(length=100)
+  pearson.power <- numeric(length=100)
+  evol.fpr <- numeric(length=100)
+  pearson.fpr <- numeric(length=100)
+  evol.fdr <- numeric(length=100)
+  pearson.fdr <- numeric(length=100)
+  evol.accuracy <- numeric(length=100)
+  pearson.accuracy <- numeric(length=100)
+  for (i in 1:100)
+  {
+    power <- getPerformanceMetric(sim)
+    evol.power[i] <- power$TPR
+    evol.fpr[i] <- power$FPR
+    evol.fdr[i] <- power$FDR
+    evol.accuracy[i] <- power$Accuracy
+  }
+  for (i in 1:100)
+  {
+    power <- getPerformanceMetric(sim,method="pearson")
+    pearson.power[i] <- power$TPR
+    pearson.fpr[i] <- power$FPR
+    pearson.fdr[i] <- power$FDR
+    pearson.accuracy[i] <- power$Accuracy
+    
+  }
+  print("Evolutionary Correlation SD")
+  printSDValues(evol.power,evol.fpr,evol.fdr,evol.accuracy)
+  print("Pearson Correlation SD")
+  printSDValues(pearson.power,pearson.fpr,pearson.fdr,pearson.accuracy)
+  comp.power <- t.test(evol.power,pearson.power)
+  comp.fpr <- t.test(evol.fpr,pearson.fpr)
+  comp.fdr <- t.test(evol.fdr,pearson.fdr)
+  comp.accuracy <- t.test(evol.accuracy,pearson.accuracy)
+  print(comp.power)
+  print(comp.fpr)
+  print(comp.fdr)
+  print(comp.accuracy)
+}
+
 ## Code for comparing distributions of evolutionary and peason correlations
 
 
@@ -666,12 +905,17 @@ df <- getResults("../Results/",
                  remove.bad.go=T,
                  model="BM"
                  )
-p<-plotBack2Back(df,"Correlation Distribution Comparing Binding Proteins\nto Randomly-Generated Control")
-pdf("../Images/pc_pu_back_to_back_plot.pdf",width=8)
-p
-dev.off()
 
-## Code for generating correlations with evolutionary correlation
+exclude <- read.table("../Data/scer_to_exclude.txt",sep="",header=F,stringsAsFactors=F)
+df <- df[which(!df[,1] %in% exclude[,1]),]
+df <- df[which(!df[,2] %in% exclude[,1]),]
+p<-plotBack2Back(df,"Correlation Distribution Comparing Binding Proteins\nto Randomly-Generated Control")
+ggsave2("../Images/Figure2.pdf",width=165,height =165 ,units="mm")
+#pdf("../Images/pc_pu_back_to_back_plot_nucl_sub_tree.pdf",width=8)
+# p
+# dev.off()
+
+# # ## Code for generating correlations with evolutionary correlation
 treat <- df[which(df$Linked == "binding"),]
 
 p1 <- plotMetricWithEvolCor(treat,metric = "Score",
@@ -681,17 +925,18 @@ p1 <- plotMetricWithEvolCor(treat,metric = "Score",
                            xlabel="STRING Confidence Score",
                            ylabel=expression(rho[C]),
                            num.boot=1000)
-p2 <- plotMetricWithEvolCor(treat,metric = "DJ.Index",
-                           apply.arctanh = F,
-                           apply.weights = T,
-                           main="Jaccard Index vs. Phylogenetically-Corrected Correlation\nper Protein Pair",
-                           xlabel="Jaccard Index",
-                           ylabel=expression(rho[C]),
-                           num.boot=1000)
+ggsave2("../Images/Figure3.pdf",width=150,height =100 ,units="mm")
+# p2 <- plotMetricWithEvolCor(treat,metric = "DJ.Index",
+#                            apply.arctanh = F,
+#                            apply.weights = T,
+#                            main="Jaccard Index vs. Phylogenetically-Corrected Correlation\nper Protein Pair",
+#                            xlabel="Jaccard Index",
+#                            ylabel=expression(rho[C]),
+#                            num.boot=1000)
 p3 <- plotMetricWithEvolCor(treat,metric = "Mean.Anc.State",
                            apply.arctanh = F,
                            apply.weights = T,
-                           main="Mean Ancestral Gene Expression Estimate vs. Phylogenetically-Corrected Correlation\nper Protein Pair",
+                           main="Mean Ancestral Gene Expression vs. Phylogenetically-Corrected Correlation\nper Protein Pair",
                            xlabel="Mean Ancestral Gene Expression Estimate (Log scale)",
                            ylabel=expression(rho[C]),
                            num.boot=1000)
@@ -708,19 +953,25 @@ treat.erc<-compareERC(treat,erc.file="../Data/erc_protein_ids.tsv")
 p5 <- plotMetricWithEvolCor(treat.erc,metric = "ERC",
                             apply.arctanh = F,
                             apply.weights = T,
-                            main="Protein Sequence Coevolution vs.\nGene Expression Coevolution\nper Protein Pair",
+                            main="Protein Sequence Coevolution vs. Gene Expression Coevolution\nper Protein Pair",
                             xlabel="Protein Sequence Coevolution",
                             ylabel=expression(rho[C]),
                             num.boot=1000)
-treat.erc<-compareERC(treat,erc.file="../Data/cai_protein_ids.tsv")
+treat.cai<-compareERC(treat,erc.file="../Data/cai_protein_ids.tsv")
 #treat.erc["ERC"] <- atanh(treat.erc[,"ERC"])
-p6 <- plotMetricWithEvolCor(treat.erc,metric = "ERC",
+p6 <- plotMetricWithEvolCor(treat.cai,metric = "ERC",
                             apply.arctanh = F,
                             apply.weights = T,
-                            main="CAI Coevolution vs.\nGene Expression Coevolution\nper Protein Pair",
+                            main="CAI Coevolution vs. Gene Expression Coevolution\nper Protein Pair",
                             xlabel="CAI Coevolution",
                             ylabel=expression(rho[C]),
                             num.boot=1000)
+
+func <- plot_grid(p4,p3,labels=c("A","B"),align="v",nrow=2,ncol=1)
+ggsave2("../Images/Figure4.pdf",width=150,height =190 ,units="mm")
+
+rate <- plot_grid(p5,p6,labels=c("A","B"),align="v",nrow=2,ncol=1)
+ggsave2("../Images/Figure5.pdf",width=120,height =190 ,units="mm")
 
 pdf("../Images/metrics_compared_to_evol_cor_filtered_for_BM.pdf",width=7.5,height = 6.2)
 p1
@@ -742,68 +993,78 @@ dev.off()
 
 
 ## Code for plotting the results of simulated data
-sim.results <- read.table("../Simulated_Results/BM_sim.tsv",sep="\t",header=T,stringsAsFactors=F)
-sim.bind <-compareRealSim(df,sim.results,metric="Pearson",category = "binding",main="Pearson Correlation Estimation Performance:\nCorrelated Evolution",xlabel="Parameter Estimated from Real Data",ylabel="Parameter Estimated from Simulated Data")
-sim.control <-compareRealSim(df,sim.results,metric="Pearson",category = "None",main="Pearson Correlation Estimation Performance:\nIndependent Evolution",xlabel="Pearson Correlation (From Simulated Data)",ylabel="Relative Density")
+# sim.results <- read.table("../Results/Simulated_Results/BM_sim_redo.tsv",sep="\t",header=T,stringsAsFactors=F)
+# merged.1 <- merge(df,sim.results,by=c("Prot.1","Prot.2"),suffix=c("_Real",""))
+# merged.2 <- merge(df,sim.results,by.x=c("Prot.1","Prot.2"),by.y=c("Prot.2","Prot.1"),suffix=c("_Real",""))
+# merged <- rbind(merged.1,merged.2)
+# print("Evaluating Fraser et. al. 2004")
+# evaluateFraser2004(merged)
+# print("Evaluating Martin and Fraser 2018")
+# evaluateMartin2018(merged)
+# print("Evaluating Cope et. al. 2018")
+# evaluatePCM(merged)
 
-pdf("../Images/real_sim_compare_pearson.pdf")
-sim.bind
-sim.control
-dev.off()
+# sim.bind <-compareRealSim(df,sim.results,metric="Pearson",category = "binding",main="Pearson Correlation Estimation Performance:\nCorrelated Evolution",xlabel="Parameter Estimated from Real Data",ylabel="Parameter Estimated from Simulated Data")
+# sim.control <-compareRealSim(df,sim.results,metric="Pearson",category = "None",main="Pearson Correlation Estimation Performance:\nIndependent Evolution",xlabel="Pearson Correlation (From Simulated Data)",ylabel="Relative Density")
 
-sim.bind <-compareRealSim(df,sim.results,metric="Evol.cor",category = "binding",main="Evolutionary Correlation Estimation Performance:\nCorrelated Evolution",xlabel="Parameter Estimated from Real Data",ylabel="Parameter Estimated from Simulated Data")
-sim.control <-compareRealSim(df,sim.results,metric="Evol.cor",category = "None",main="Evolutionary Correlation Estimation Performance:\nIndependent Evolution",xlabel="Pearson Correlation (From Simulated Data)",ylabel="Relative Density")
+# pdf("../Images/real_sim_compare_pearson.pdf")
+# sim.bind
+# sim.control
+# dev.off()
 
-pdf("../Images/real_sim_compare_evol_cor.pdf")
-sim.bind
-sim.control
-dev.off()
+# sim.bind <-compareRealSim(df,sim.results,metric="Evol.cor",category = "binding",main="Evolutionary Correlation Estimation Performance:\nCorrelated Evolution",xlabel="Parameter Estimated from Real Data",ylabel="Parameter Estimated from Simulated Data")
+# sim.control <-compareRealSim(df,sim.results,metric="Evol.cor",category = "None",main="Evolutionary Correlation Estimation Performance:\nIndependent Evolution",xlabel="Pearson Correlation (From Simulated Data)",ylabel="Relative Density")
 
-## Code for performing resampling done to control for protein membership
-treat <- df[which(df$Linked=="binding"),]
-control <- df[which(df$Linked=="None"),]
+# pdf("../Images/real_sim_compare_evol_cor.pdf")
+# sim.bind
+# sim.control
+# dev.off()
 
-mean.bind.evol <- numeric(length = 200)
-mean.null.evol <- numeric(length=200)
-p.val.bind.evol <- numeric(length=200)
-p.val.null.evol <- numeric(length=200)
-mean.bind.pear <- numeric(length = 200)
-mean.null.pear <- numeric(length=200)
-p.val.bind.pear <- numeric(length=200)
-p.val.null.pear <- numeric(length=200)
-for (i in 1:200)
-{
-  print(i)
-  bind.unique <- getUniqueMembers(treat,200)
-  null.unique <- getUniqueMembers(control,200)
-  mean.bind.evol[i] <- mean(bind.unique$Evol.cor)
-  mean.null.evol[i] <- mean(null.unique$Evol.cor)
-  p.val.bind.evol[i] <- t.test(bind.unique$Evol.cor)$p.value
-  p.val.null.evol[i] <- t.test(null.unique$Evol.cor)$p.value
-  mean.bind.pear[i] <- mean(bind.unique$Pearson)
-  mean.null.pear[i] <- mean(null.unique$Pearson)
-  p.val.bind.pear[i] <- t.test(bind.unique$Pearson)$p.value
-  p.val.null.pear[i] <- t.test(null.unique$Pearson)$p.value
-}
-#
-x <- round(mean(mean.bind.evol),2)
-y <- round(mean(mean.null.evol),2)
-z <- round(mean(mean.bind.pear),2)
-w <- round(mean(mean.null.pear),2)
-resampled <- data.frame(P=c(mean.bind.evol,mean.null.evol,mean.bind.pear,mean.null.pear),
-                 Metric=c(rep("Evolutionary",400),rep("Pearson",400)),
-                 Group=c(rep(paste0("Evolutionary + Binding, ",x),200),rep(paste0("Evolutionary + Control, ",y),200),rep(paste0("Pearson + Binding, ",z),200),rep(paste0("Pearson + Control, ",w),200)))
+# ## Code for performing resampling done to control for protein membership
+# treat <- df[which(df$Linked=="binding"),]
+# control <- df[which(df$Linked=="None"),]
 
-p<-(ggplot(resampled,aes(x=P,fill=Group))
-    + geom_histogram(binwidth=0.01,alpha=0.5,color="black",position="identity",size=1.5)
-    + xlab("Mean Correlation")
-    +scale_fill_viridis(discrete = T)
-    +ylim(c(0,35))
-    + labs(fill=expression("Correlation Metric + Group,"~bar(rho)))
-    + theme(legend.position = c(0.2,0.85))
-    + ggtitle("Mean Correlation Distributions:\n Constraining Protein Membership") + theme(plot.title = element_text(hjust=0.5,size=14,face="bold"),panel.grid.major = element_blank(),panel.grid.minor=element_blank(),panel.background=element_blank(),axis.line=element_line(colour="black"),legend.text=element_text(size=10,face="bold"),axis.title.y=element_text(size=14,face="bold"),axis.title.x=element_text(size=14,face="bold"),axis.text=element_text(size=12,face="bold"))
-) 
-pdf("../Images/resampling_procedure.pdf")
-p
-dev.off()
+# mean.bind.evol <- numeric(length = 200)
+# mean.null.evol <- numeric(length=200)
+# p.val.bind.evol <- numeric(length=200)
+# p.val.null.evol <- numeric(length=200)
+# mean.bind.pear <- numeric(length = 200)
+# mean.null.pear <- numeric(length=200)
+# p.val.bind.pear <- numeric(length=200)
+# p.val.null.pear <- numeric(length=200)
+# for (i in 1:200)
+# {
+#   print(i)
+#   bind.unique <- getUniqueMembers(treat,200)
+#   null.unique <- getUniqueMembers(control,200)
+#   mean.bind.evol[i] <- mean(bind.unique$Evol.cor)
+#   mean.null.evol[i] <- mean(null.unique$Evol.cor)
+#   p.val.bind.evol[i] <- t.test(bind.unique$Evol.cor)$p.value
+#   p.val.null.evol[i] <- t.test(null.unique$Evol.cor)$p.value
+#   mean.bind.pear[i] <- mean(bind.unique$Pearson)
+#   mean.null.pear[i] <- mean(null.unique$Pearson)
+#   p.val.bind.pear[i] <- t.test(bind.unique$Pearson)$p.value
+#   p.val.null.pear[i] <- t.test(null.unique$Pearson)$p.value
+# }
+# #
+# x <- round(mean(mean.bind.evol),2)
+# y <- round(mean(mean.null.evol),2)
+# z <- round(mean(mean.bind.pear),2)
+# w <- round(mean(mean.null.pear),2)
+# resampled <- data.frame(P=c(mean.bind.evol,mean.null.evol,mean.bind.pear,mean.null.pear),
+#                  Metric=c(rep("Evolutionary",400),rep("Pearson",400)),
+#                  Group=c(rep(paste0("Evolutionary + Binding, ",x),200),rep(paste0("Evolutionary + Control, ",y),200),rep(paste0("Pearson + Binding, ",z),200),rep(paste0("Pearson + Control, ",w),200)))
+
+# p<-(ggplot(resampled,aes(x=P,fill=Group))
+#     + geom_histogram(binwidth=0.01,alpha=0.5,color="black",position="identity",size=1.5)
+#     + xlab("Mean Correlation")
+#     +scale_fill_viridis(discrete = T)
+#     +ylim(c(0,35))
+#     + labs(fill=expression("Correlation Metric + Group,"~bar(rho)))
+#     + theme(legend.position = c(0.2,0.85))
+#     + ggtitle("Mean Correlation Distributions:\n Constraining Protein Membership") + theme(plot.title = element_text(hjust=0.5,size=14,face="bold"),panel.grid.major = element_blank(),panel.grid.minor=element_blank(),panel.background=element_blank(),axis.line=element_line(colour="black"),legend.text=element_text(size=10,face="bold"),axis.title.y=element_text(size=14,face="bold"),axis.title.x=element_text(size=14,face="bold"),axis.text=element_text(size=12,face="bold"))
+# ) 
+# pdf("../Images/resampling_procedure.pdf")
+# p
+# dev.off()
 
