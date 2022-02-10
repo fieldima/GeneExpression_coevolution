@@ -15,3 +15,4 @@ p_analyze3 <- p_analyze2 %>% transmute(inade = c.less + sv.less + sa.less + sh.l
 #Count
 arb_summary <- p_analyze3 %>% count(inade) %>% mutate(prop = n/sum(n))
 print(arb_summary)
+
