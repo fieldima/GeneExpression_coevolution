@@ -76,7 +76,14 @@ pvals <- map_df(arb_result, pvalue_arbutus)
 saveRDS(pvals, file = "pvalues_df")
 
 p_piv <- pvals %>% pivot_longer(cols = everything(), names_to = "tstat")
-saveRDS(pvals, file = "pvalues_table")
+saveRDS(p_piv, file = "pvalues_table")
 
 p_piv %>% ggplot(aes(value)) + geom_histogram(aes(y = ..density..)) + facet_wrap(~tstat, nrow = 1) + theme_bw()
 ggsave("arbutus_results.png")
+
+# See difference between genes consistent with BM vs genes not consistent
+bm_prot <- read_tsv(file = "Data/control_set_consistent_w_bm.txt") %>%
+  pivot_longer(cols = !c(Type, Score), values_to = "Prot") %>%
+  select(!name) %>% unique() %>% pull(Prot)
+
+#Re-run analysis on just genes consistent with BM

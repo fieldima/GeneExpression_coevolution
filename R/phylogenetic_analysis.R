@@ -27,10 +27,10 @@ if(length(args) >= 6){
   }
 } else
 {
-  tree.file <- "../Data/fungi_tree.tre"
-  gene.exp <- "../Data/gene_expression_tpm_matrix_updated_Standard.LogNorm.tsv"
-  std.exp <- "../Data/std_err_tpm_matrix_updated_Standard.LogNorm.tsv"
-  interaction.file <- "../Data/interactions.txt"
+  tree.file <- "./Data/fungi_tree.tre"
+  gene.exp <- "./Data/gene_expression_tpm_matrix_updated_Standard.LogNorm.tsv"
+  std.exp <- "./Data/std_err_tpm_matrix_updated_Standard.LogNorm.tsv"
+  interaction.file <- "./Data/interactions.txt"
   model.type <- "BM"
   out <- "model_results.tsv"
   to.drop <- c()
