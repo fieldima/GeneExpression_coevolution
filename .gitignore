@@ -2,3 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+only_BM_allfit_pvalues_df
+only_BM_allfit_pvalues_table
+only_BM_genes_pvals
+only_bm_genes_allfit
