@@ -61,6 +61,20 @@ Interestingly, when fitting the best available model to each gene, the models us
 
 The authors of the paper also chose to exclude many of the genes that did not meet the assumptions of the BM model, leaving a total of 648 genes left for analysis. The plot below shows the same process as above, but for just those 648 genes. Additionally, I have calculated a standard error for each gene across species and used that in the fit of each model.
 
+![](arbutus_only_BM_genes.png)
+
+**Figure 4. P-value distributions for just the 648 genes that fit the assumptions of the BM model when fit to a BM model.** The distribution shows the same trend as Figure 2.
+
+![](only_BM_allfit_AIC.png)
+
+**Figure 5. Histogram showing the fit best-fit model for a gene-phylogeny pair for just genes that fit the assumptions of BM.** The trend is the same as Figure 1.
+
+![](only_BM_allfit_arbutus_results.png)
+
+**Figure 6. P-value distributions for just the 648 genes that fit the assumptions of the BM model when fit to the best-fit model.** The trend remains the same as in Figure 3, except for the coefficient of variation, which accounts for rate variation across the phylogeny, which actually shows a lower adequacy for this subset of the data.
+
+As stated earlier, a set of the genes have low phylogenetic signal when fitting the best-fit model, as shown by the genes that are missing values for s.hgt. An analysis of these genes...
+
 ## References
 
 1.  Cope, A. L.; O'Meara, B. C.; Gilchrist, M. A. Gene Expression of Functionally-Related Genes Coevolves across Fungal Species: Detecting Coevolution of Gene Expression Using Phylogenetic Comparative Methods. *BMC Genomics* **2020**, *21* (1), 370. <https://doi.org/10.1186/s12864-020-6761-3.>
