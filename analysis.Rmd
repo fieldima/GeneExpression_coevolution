@@ -59,7 +59,7 @@ As shown in the plot above, a BM model was not adequate for this data set, as ev
 
 Interestingly, when fitting the best available model to each gene, the models used were adequate across the board, as shown by the flat distribution of p-values. Notably, the s.hgt test statistic shows a low amount of p-values near the low end. This is likely caused by many of the genes having NA values for this test statistic. This means that the re-scaled tree for each of these genes has a conal shape, i.e., there was no phylogenetic signal for these genes when the best-fit model is used. The fact that this was not seen when fitting the BM model alone suggests that other models (EB or OU) may be too stringent with phylogenetic signal, or that the BM model is not stringent enough. Further analysis is necessary to determine which of the two possibilities explains this.
 
-The authors of the paper also chose to exclude many of the genes that did not meet the assumptions of the BM model, leaving a total of 648 genes left for analysis. The plot below shows the same process as above, but for just those 648 genes.
+The authors of the paper also chose to exclude many of the genes that did not meet the assumptions of the BM model, leaving a total of 648 genes left for analysis. The plot below shows the same process as above, but for just those 648 genes. Additionally, I have calculated a standard error for each gene across species and used that in the fit of each model.
 
 ## References
 
