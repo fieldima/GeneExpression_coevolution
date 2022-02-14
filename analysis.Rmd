@@ -83,6 +83,14 @@ An analysis of just the genes that the original authors considered to be fitting
 
 As shown in the plot above, genes that had NA as their s.hgt P-value had higher P-values in this test, showing that these genes did indeed show no phylogenetic signal. I then performed this same analysis on the entire data set to see if this pattern was unique to just genes that had been identified as following the assumptions of BM, or if this pattern could be generalized.
 
+![](phylosig_all.png)
+
+**Figure 8. K statistic and P-values for tests for phylogenetic signal in entire dataset.** The same trend for just the BM-confirmed genes holds, but the differences between the two groups is less extreme.
+
+As shown by the figure above, the trend holds for the entire data set. Altogether, this suggests that genes identified to have NA values for s.hgt through the "best-fit" model are indeed getting these values due to no phylogenetic signal. This was **not** seen when the genes were all fit to a BM model, suggesting that using a BM model may overstate the phylogenetic signal of genes and potentially lead to incorrect conclusions.
+
+Next, I wanted to dive deeper into genes identified to have low phylogenetic signal and see if these genes correlate with any of the other test statistics.
+
 ## References
 
 1.  Cope, A. L.; O'Meara, B. C.; Gilchrist, M. A. Gene Expression of Functionally-Related Genes Coevolves across Fungal Species: Detecting Coevolution of Gene Expression Using Phylogenetic Comparative Methods. *BMC Genomics* **2020**, *21* (1), 370. <https://doi.org/10.1186/s12864-020-6761-3.>
