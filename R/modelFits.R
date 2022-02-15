@@ -5,6 +5,7 @@ library(geiger)
 library(phytools)
 library(tidyverse)
 library(arbutus)
+library(corrplot)
 
 CleanData <- function(phy, data) {
   cleaned <- treedata(phy,data,warnings=T)
@@ -119,3 +120,20 @@ K_P_vals %>% ggplot(aes(x = subset, y = value, fill = subset)) + geom_violin() +
   geom_boxplot() + facet_wrap(~Statistic) + theme_bw() + ggtitle("Phylogenetic signal of all genes")+
   xlab("Subset of data")
 ggsave("phylosig_all.png")
+
+#seeing differences between genes without and with phylogenetic signal
+pvals %>% filter(is.na(s.hgt)) %>% pivot_longer(cols = c(-s.hgt)) %>% ggplot(aes(y = value, fill = name)) + geom_boxplot()
+pvals %>% filter(!is.na(s.hgt)) %>% pivot_longer(cols = c(-s.hgt)) %>% ggplot(aes(y = value, fill = name)) + geom_boxplot()
+
+#Checking correlations between different statistics
+pvals %>% select(-m.sig) %>% drop_na() %>% cor() %>% corrplot(method = "color", type = "lower")
+pvals %>% filter(is.na(s.hgt)) %>% select(-m.sig, -s.hgt) %>% cor() %>% corrplot(method = "color", type = "lower")
+
+#Checking correlation between s.hgt and s.var
+pvals %>% select(s.hgt, s.var) %>% ggplot(aes(x = s.hgt, y = s.var)) + geom_point()
+
+#Which genes showed low pvals in BM that don't in best-fit
+
+#Which genes have phylogenetic signal in BM but not best-fit
+
+#Which genes still have low pvals in best-fit
