@@ -14,7 +14,7 @@ From this analysis, the researchers concluded that certain proteins that
 physically interact show evidence of coevolution, and that PCMs are
 uniquely suited to detect this evolution \[1\]. In this analysis, I will
 reanalyze the methods they used to come to their conclusions and
-determine if the a BM model is appropriate for the given data set.
+determine if a BM model is appropriate for the given data set.
 
 ## Methods
 
@@ -76,14 +76,14 @@ Interestingly, when fitting the best available model to each gene, the
 models used were adequate across the board, as shown by the flat
 distribution of p-values. Notably, the s.hgt test statistic shows a low
 amount of p-values near the low end. This is likely caused by many of
-the genes having NA values for this test statistic. This means that the
-re-scaled tree for each of these genes has a conal shape, i.e., there
-was no phylogenetic signal for these genes when the best-fit model is
-used. The fact that this was not seen when fitting the BM model alone
-suggests that other models (EB or OU) may be too stringent with
-phylogenetic signal, or that the BM model is not stringent enough.
-Further analysis is necessary to determine which of the two
-possibilities explains this.
+the genes having NA values for this test statistic. NA values for the
+s.hgt test statistic means that the re-scaled tree for each of these
+genes has a conal shape, i.e., there was no phylogenetic signal for
+these genes when the best-fit model is used. The fact that this was not
+seen when fitting the BM model alone suggests that other models (EB or
+OU) may be too stringent with phylogenetic signal, or that the BM model
+is not stringent enough. Further analysis is necessary to determine
+which of the two possibilities explains this.
 
 The authors of the paper also chose to exclude many of the genes that
 did not meet the assumptions of the BM model, leaving a total of 648
@@ -111,6 +111,18 @@ assumptions of the BM model when fit to the best-fit model.** The trend
 remains the same as in Figure 3, except for the coefficient of
 variation, which accounts for rate variation across the phylogeny, which
 actually shows a lower adequacy for this subset of the data.
+
+Unlike with the larger data set, genes that the authors identified as
+fitting their assumption showed inadequacies in the best-fit model’s
+ability to capture the heterogeneity of phylogenetic rate. This is
+interesting but make sense, considering that the dominant models, BM and
+OU, have a single, fixed rate across the entire phylogeny. This also
+shows a strength of the original research, as they used a multivariate
+BM model, allowing the rate to change between different branches. In the
+future, I would like to fit, analyze, and then include multivariate
+models in my analysis, specifically for this paper. I am interested to
+see if a multivariate BM model would capture the data better than the
+best-fit model chosen by AIC.
 
 As stated earlier, a set of the genes have low phylogenetic signal when
 fitting the best-fit model, as shown by the genes that are missing
@@ -141,6 +153,76 @@ no phylogenetic signal. I then performed this same analysis on the
 entire data set to see if this pattern was unique to just genes that had
 been identified as following the assumptions of BM, or if this pattern
 could be generalized.
+
+![](phylosig_all.png)
+
+**Figure 8. K statistic and P-values for tests for phylogenetic signal
+in entire dataset.** The same trend for just the BM-confirmed genes
+holds, but the differences between the two groups is less extreme.
+
+As shown by the figure above, the trend holds for the entire data set.
+Altogether, this suggests that genes identified to have NA values for
+s.hgt through the “best-fit” model are indeed getting these values due
+to no phylogenetic signal. This was **not** seen when the genes were all
+fit to a BM model, suggesting that using a BM model may overstate the
+phylogenetic signal of genes and potentially lead to incorrect
+conclusions.
+
+Next, I wanted to dive deeper into genes identified to have low
+phylogenetic signal and see if these genes correlate with any of the
+other test statistics. The results are shown below.
+
+<img src="test-stats-no-phylosig.png" width="318"/>
+
+<img src="test-stats-phylosig.png" width="318"/>
+
+**Figure 9. Test statistics of genes with no phylogenetic signal (left)
+and with phylogenetic signal (right).** Absence of phylogenetic signal
+did not seem to have a large affect on any of the distributions of
+P-values.
+
+I then wanted to see if any of the test statistics correlated.
+
+<img src="corrplot_no_phylosig.png" width="296"/>
+
+<img src="corrplot_phylosig.png" width="295"/>
+
+**Figure 10. Correlation matrix of test statistics for genes with no
+phylogenetic signal (left) and with phylogenetic signal (right).**
+Question marks indicate NA values.
+
+As shown by Figure 10, the only test statistics that showed correlation
+were s.var and s.hgt, and using genes with or without phylogenetic
+signal did not have a large effect on correlations between other
+statistics.
+
+Next I wanted to see an overall look at the data, how many genes are
+considered inadequate in some way? And how was this number improved by
+choosing the best-fit model?
+
+<img src="bestfit_summary_allgenes.png" width="311"/>
+
+<img src="bestfit_summary_chosengenes.png" width="313"/>
+
+**Figure 11. Summary of inadequacies found when fitting best fit model
+for all genes (left) and author chosen genes (right).**
+
+<img src="BM_summary.png" width="311"/>
+
+<img src="BM_summary_chosen.png" width="312"/>
+
+**Figure 12. Summary of inadequacies found when fitting BM model for all
+genes (left) and author chosen genes (right).**
+
+Overall, using the best-fit model “rescued” 354 genes that had at least
+one inadequacy when using BM when considering the entire data set. For
+just the genes that the author used, using the best-fit model rescued
+123 genes, or almost ***20%*** of the 648 genes identified by the
+authors! An example of one of these genes is NP\_013302.1, which showed
+inadequacies in s.var and s.hgt. Specifically, this means that the BM
+model used to fit the data did not adequately describe the relationship
+between contrast values and branch length and the variation relative to
+time.
 
 ## References
 

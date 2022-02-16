@@ -126,14 +126,20 @@ pvals %>% filter(is.na(s.hgt)) %>% pivot_longer(cols = c(-s.hgt)) %>% ggplot(aes
 pvals %>% filter(!is.na(s.hgt)) %>% pivot_longer(cols = c(-s.hgt)) %>% ggplot(aes(y = value, fill = name)) + geom_boxplot()
 
 #Checking correlations between different statistics
-pvals %>% select(-m.sig) %>% drop_na() %>% cor() %>% corrplot(method = "color", type = "lower")
-pvals %>% filter(is.na(s.hgt)) %>% select(-m.sig, -s.hgt) %>% cor() %>% corrplot(method = "color", type = "lower")
+pvals %>%  drop_na() %>% select(-m.sig) %>% cor() %>% corrplot(method = "color", type = "lower")
+pvals %>% filter(is.na(s.hgt)) %>% select(-m.sig) %>% cor() %>% corrplot(method = "color", type = "lower")
 
 #Checking correlation between s.hgt and s.var
 pvals %>% select(s.hgt, s.var) %>% ggplot(aes(x = s.hgt, y = s.var)) + geom_point()
 
-#Which genes showed low pvals in BM that don't in best-fit
+#Creating df with pvals with gene names
+genes <- colnames(dat)
 
-#Which genes have phylogenetic signal in BM but not best-fit
-
-#Which genes still have low pvals in best-fit
+addBM <- function(str){
+  res <- paste0(str, "_BM")
+}
+ 
+bestfit_pvals <- pvals %>% mutate(gene = genes, model = "Best") %>% pivot_longer(cols = c(-gene, -model), names_to = "test-statistic")
+BM_pvals <- readRDS("BM_pvals") %>% mutate(gene = genes, model = "BM") %>% pivot_longer(cols = c(-gene, -model), names_to = "test-statistic")
+all_pvals <- bind_rows(BM_pvals, bestfit_pvals)
+all_pvals_wider <- all_pvals %>% pivot_wider(names_from = c(model, `test-statistic`), names_sep = "_", values_from = value)
