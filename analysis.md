@@ -12,9 +12,36 @@ these 18 species, 3556 homologous proteins were analyzed for coevolution
 of their expression levels using a multivariate Brownian Motion model.
 From this analysis, the researchers concluded that certain proteins that
 physically interact show evidence of coevolution, and that PCMs are
-uniquely suited to detect this evolution \[1\]. In this analysis, I will
-reanalyze the methods they used to come to their conclusions and
-determine if a BM model is appropriate for the given data set.
+uniquely suited to detect this evolution \[1\]. Specifically, they
+performed hypothesis testing using a calculated value they called the
+“phylogenetically-corrected correlation”. The null hypothesis being this
+value should be zero if there is no significant evidence of coevolution.
+In this analysis, I will reanalyze the methods they used to come to
+their conclusions and determine if a BM model is appropriate for the
+given data set.
+
+<img src="bestfit_summary_allgenes.png" width="311"/>
+
+<img src="bestfit_summary_chosengenes.png" width="313"/>
+
+<img src="BM_summary.png" width="311"/>
+
+<img src="BM_summary_chosen.png" width="312"/>
+
+**Top: Summary of inadequacies found when fitting best fit model for all
+genes (left) and author chosen genes (right). Bottom: Summary of
+inadequacies found when fitting BM model for all genes (left) and author
+chosen genes (right).**
+
+Overall, using the best-fit model “rescued” 354 genes that had at least
+one inadequacy when using BM when considering the entire data set. For
+just the genes that the author used, using the best-fit model rescued
+123 genes, or almost ***20%*** of the 648 genes identified by the
+authors! An example of one of these genes is NP\_013302.1, which showed
+inadequacies in s.var and s.hgt. Specifically, this means that the BM
+model used to fit the data did not adequately describe the relationship
+between contrast values and branch length and the variation relative to
+time.
 
 ## Methods
 
@@ -195,34 +222,6 @@ As shown by Figure 10, the only test statistics that showed correlation
 were s.var and s.hgt, and using genes with or without phylogenetic
 signal did not have a large effect on correlations between other
 statistics.
-
-Next I wanted to see an overall look at the data, how many genes are
-considered inadequate in some way? And how was this number improved by
-choosing the best-fit model?
-
-<img src="bestfit_summary_allgenes.png" width="311"/>
-
-<img src="bestfit_summary_chosengenes.png" width="313"/>
-
-**Figure 11. Summary of inadequacies found when fitting best fit model
-for all genes (left) and author chosen genes (right).**
-
-<img src="BM_summary.png" width="311"/>
-
-<img src="BM_summary_chosen.png" width="312"/>
-
-**Figure 12. Summary of inadequacies found when fitting BM model for all
-genes (left) and author chosen genes (right).**
-
-Overall, using the best-fit model “rescued” 354 genes that had at least
-one inadequacy when using BM when considering the entire data set. For
-just the genes that the author used, using the best-fit model rescued
-123 genes, or almost ***20%*** of the 648 genes identified by the
-authors! An example of one of these genes is NP\_013302.1, which showed
-inadequacies in s.var and s.hgt. Specifically, this means that the BM
-model used to fit the data did not adequately describe the relationship
-between contrast values and branch length and the variation relative to
-time.
 
 ## References
 
