@@ -47,4 +47,15 @@ arb_summary_BMchosenonly <- BM_chosen_df %>% select(!m.sig) %>%
   transmute(inade = c.less + sv.less + sa.less + sh.less + d.less) %>% count(inade) %>% mutate(prop = n/sum(n)) %>% mutate(inade = as.character(inade))
 
 arb_summary_BMchosenonly %>% ggplot(aes(x = inade, y = n, fill = inade)) + geom_bar(stat = "identity") + 
-  xlab("Number of inadequacies") + ylab("Number of genes") + ggtitle("Amount of genes by number of inadequacies") + theme_bw()
+  xlab("Number of inadequacies") + ylab("Number of genes") + ggtitle("Amount of genes by number of inadequacies when fitting a BM model") + theme_bw()
+
+
+#Compare Pvals from just BM to all fit
+BM_only <- readRDS("BM_pvals") %>% mutate(models = "BM") %>% select(!m.sig) %>% pivot_longer(cols = -c(models), names_to = "TestStatistic", values_to = "P-values")
+all_models <- readRDS("pvalues_df") %>% mutate(models = "Best Fit") %>% select(!m.sig) %>% pivot_longer(cols = -c(models), names_to = "TestStatistic", values_to = "P-values")
+
+all_pvals_data <- full_join(BM_only, all_models)
+
+all_pvals_data %>% ggplot(aes(x = `P-values`, fill = TestStatistic)) + geom_histogram() + 
+  facet_grid(rows = vars(models), cols = vars(TestStatistic)) + theme_bw() + geom_vline(xintercept = 0.05) +
+  theme(legend.position = "none", panel.grid = element_blank()) + scale_fill_brewer(palette ="Set1") 
