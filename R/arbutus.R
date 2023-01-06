@@ -81,5 +81,5 @@ saveRDS(pvals, file = "pvalues_df")
 p_piv <- pvals %>% pivot_longer(cols = everything(), names_to = "tstat")
 saveRDS(p_piv, file = "pvalues_table")
 
-p_piv %>% ggplot(aes(value)) + geom_histogram(aes(y = ..density..)) + facet_wrap(~tstat, nrow = 1) + theme_bw()
+p_piv %>% filter(!tstat %in% c("m.sig")) %>% ggplot(aes(value)) + geom_histogram(aes(y = ..density..)) + facet_wrap(~tstat, nrow = 1) + theme_bw()
 ggsave("arbutus_results.png")
